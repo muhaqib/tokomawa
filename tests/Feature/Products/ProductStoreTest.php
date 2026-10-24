@@ -3,6 +3,7 @@
 namespace Tests\Feature\Products;
 
 use App\Models\Category;
+use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\StockMutation;
@@ -111,6 +112,42 @@ class ProductStoreTest extends TestCase
             'product_id' => $product->id,
             'warehouse_id' => $other->id,
             'stock' => 100,
+        ]);
+    }
+
+    public function test_rejected_warehouse_does_not_leave_a_product_behind(): void
+    {
+        $this->warehouse->update(['is_active' => false]);
+        $payload = $this->validPayload(['warehouse_id' => $this->warehouse->id]);
+
+        $this->post(route('products.store'), $payload)->assertForbidden();
+
+        $this->assertDatabaseMissing('products', ['barcode' => $payload['barcode']]);
+    }
+
+    public function test_manager_defaults_to_an_accessible_warehouse(): void
+    {
+        $outlet = Outlet::create([
+            'code' => 'TOKO', 'name' => 'Toko', 'is_active' => true, 'is_sales_enabled' => true,
+        ]);
+        $warehouse = Warehouse::create([
+            'code' => 'TOKO', 'name' => 'Gudang Toko', 'type' => 'branch',
+            'is_active' => true, 'sort_order' => 1, 'outlet_id' => $outlet->id,
+        ]);
+        $manager = User::where('email', 'manager@gmail.com')->firstOrFail();
+        $manager->markEmailAsVerified();
+        $manager->outlets()->attach($outlet);
+        $this->actingAs($manager);
+        $payload = $this->validPayload();
+
+        $this->post(route('products.store'), $payload)->assertRedirect(route('products.index'));
+
+        $product = Product::where('barcode', $payload['barcode'])->firstOrFail();
+        $this->assertDatabaseHas('product_warehouse', [
+            'product_id' => $product->id, 'warehouse_id' => $warehouse->id, 'stock' => 100,
+        ]);
+        $this->assertDatabaseMissing('product_warehouse', [
+            'product_id' => $product->id, 'warehouse_id' => $this->warehouse->id,
         ]);
     }
 

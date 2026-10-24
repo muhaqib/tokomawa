@@ -21,15 +21,6 @@ class SetLocale
             $locale = $request->session()->get('locale');
         } elseif ($request->cookie('locale')) {
             $locale = $request->cookie('locale');
-        } elseif ($request->hasHeader('Accept-Language')) {
-            $acceptLanguage = $request->header('Accept-Language');
-            $preferredLocale = explode(',', $acceptLanguage)[0] ?? null;
-            if ($preferredLocale) {
-                $localeCode = explode('-', $preferredLocale)[0];
-                if (in_array($localeCode, $availableLocales)) {
-                    $locale = $localeCode;
-                }
-            }
         }
 
         if (! in_array($locale, $availableLocales)) {

@@ -1,3 +1,4 @@
+import StoreBrand from "@/Components/StoreBrand";
 import React, { useState, useEffect } from "react";
 import { usePage, Link } from "@inertiajs/react";
 import { Toaster } from "react-hot-toast";
@@ -118,22 +119,7 @@ export default function POSLayout({ children }) {
 
                     {/* Logo */}
                     <Link href={route("dashboard")} className="flex items-center gap-2">
-                        <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
-                            {storeProfile?.logo ? (
-                                <img
-                                    src={storeProfile.logo}
-                                    alt={storeProfile?.name || "Store"}
-                                    className="w-full h-full object-contain"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-primary-600 text-white font-bold text-sm">
-                                    {(storeProfile?.name || "K").charAt(0)}
-                                </div>
-                            )}
-                        </div>
-                        <span className="hidden sm:block text-lg font-bold text-slate-800 dark:text-white">
-                            {storeProfile?.name || "KASIR"}
-                        </span>
+                        <StoreBrand hideLabelOnMobile subtitle="Meja kasir" />
                     </Link>
 
                     {/* Divider */}

@@ -13,7 +13,9 @@ use App\Services\OutletAccessService;
 use App\Services\StockMutationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -48,7 +50,7 @@ class ProductController extends Controller
      *
      * @return Response
      */
-    public function create()
+    public function create(Request $request)
     {
         // get categories
         $categories = Category::all();
@@ -61,6 +63,8 @@ class ProductController extends Controller
         // return inertia
         return Inertia::render('Dashboard/Products/Create', [
             'categories' => $categories,
+            'warehouses' => $this->outletAccessService->warehousesFor($request->user())
+                ->filter(fn ($warehouse) => $this->outletAccessService->canUseWarehouse($request->user(), $warehouse))->values(),
             'products' => $products,
             'units' => Unit::orderBy('code')->get(['id', 'code', 'symbol']),
         ]);
@@ -94,57 +98,67 @@ class ProductController extends Controller
             ...$this->compositeRules(),
             ...$this->unitRules(),
         ]);
-        // upload image
-        $image = $request->file('image');
-        $image?->storeAs('public/products', $image->hashName());
-
-        // create product
-        $product = Product::create([
-            'image' => $image?->hashName(),
-            'barcode' => $request->barcode,
-            'sku' => $request->sku,
-            'title' => $request->title,
-            'description' => $request->description,
-            'category_id' => $request->category_id,
-            'buy_price' => $request->buy_price,
-            'sell_price' => $request->sell_price,
-            'stock' => $request->stock,
-            'min_stock' => $request->min_stock ?? 0,
-            'max_stock' => $request->max_stock ?? 0,
-            'tax_type' => $request->input('tax_type', 'exclusive'),
-            'tax_rate' => $request->input('tax_rate', 11.00),
-            'is_composite' => $request->boolean('is_composite'),
-        ]);
-
+        $warehouse = null;
         if ($request->boolean('is_composite')) {
             $this->validateComponentProducts($request);
-            $this->syncComponents($product, $request->input('components'));
         } else {
-            $this->syncUnits($product, $request->input('units'));
+            $warehouse = $request->filled('warehouse_id')
+                ? Warehouse::findOrFail($request->warehouse_id)
+                : $this->outletAccessService->warehousesFor($request->user())
+                    ->first(fn ($candidate) => $this->outletAccessService->canUseWarehouse($request->user(), $candidate));
 
-            // ponytail: keep global products.stock and per-warehouse pivot in sync; PUSAT (first active main) is the default warehouse
-            $warehouse = Warehouse::find($request->warehouse_id)
-                ?? Warehouse::active()->where('type', 'main')->orderBy('sort_order')->orderBy('code')->first()
-                ?? Warehouse::active()->orderBy('sort_order')->orderBy('code')->first();
-
-            abort_unless($this->outletAccessService->canUseWarehouse($request->user(), $warehouse), 403);
-
-            if ($warehouse) {
-                ProductWarehouse::updateOrCreate(
-                    ['product_id' => $product->id, 'warehouse_id' => $warehouse->id],
-                    ['stock' => (int) $request->stock]
-                );
+            if (! $warehouse) {
+                throw ValidationException::withMessages(['warehouse_id' => 'Tidak ada gudang aktif yang dapat diakses.']);
             }
-
-            $this->stockMutationService->recordInitialStock($product, $request->user()?->id, $warehouse?->id);
+            abort_unless($this->outletAccessService->canUseWarehouse($request->user(), $warehouse), 403);
         }
-        $this->auditLogService->log(
-            event: 'product.created',
-            module: 'products',
-            auditable: $product,
-            description: 'Produk baru dibuat.',
-            after: $this->productAuditPayload($product->fresh())
-        );
+
+        DB::transaction(function () use ($request, $warehouse) {
+            // upload image
+            $image = $request->file('image');
+            $image?->storeAs('public/products', $image->hashName());
+
+            // create product
+            $product = Product::create([
+                'image' => $image?->hashName(),
+                'barcode' => $request->barcode,
+                'sku' => $request->sku,
+                'title' => $request->title,
+                'description' => $request->description,
+                'category_id' => $request->category_id,
+                'buy_price' => $request->buy_price,
+                'sell_price' => $request->sell_price,
+                'stock' => $request->stock,
+                'min_stock' => $request->min_stock ?? 0,
+                'max_stock' => $request->max_stock ?? 0,
+                'tax_type' => $request->input('tax_type', 'exclusive'),
+                'tax_rate' => $request->input('tax_rate', 11.00),
+                'is_composite' => $request->boolean('is_composite'),
+            ]);
+
+            if ($request->boolean('is_composite')) {
+                $this->syncComponents($product, $request->input('components'));
+            } else {
+                $this->syncUnits($product, $request->input('units'));
+
+                // Keep global and warehouse stock in the same transaction.
+                if ($warehouse) {
+                    ProductWarehouse::updateOrCreate(
+                        ['product_id' => $product->id, 'warehouse_id' => $warehouse->id],
+                        ['stock' => (int) $request->stock]
+                    );
+                }
+
+                $this->stockMutationService->recordInitialStock($product, $request->user()?->id, $warehouse?->id);
+            }
+            $this->auditLogService->log(
+                event: 'product.created',
+                module: 'products',
+                auditable: $product,
+                description: 'Produk baru dibuat.',
+                after: $this->productAuditPayload($product->fresh())
+            );
+        });
 
         // redirect
         return to_route('products.index');

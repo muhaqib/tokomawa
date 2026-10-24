@@ -20,7 +20,7 @@ export default function Navbar({ toggleSidebar, themeSwitcher, darkMode }) {
     const { start: startTour, isActive: tourActive } = useTour("dashboard");
     const menuNavigation = Menu();
 
-    const storeName = storeProfile?.name || "KASIR";
+    const storeName = storeProfile?.name || "Toko Mawa";
     const storeInitial = storeName?.charAt(0)?.toUpperCase() || "K";
 
     // Get current page title

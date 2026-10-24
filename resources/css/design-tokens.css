@@ -5,17 +5,17 @@
 
 /* === Color Palette === */
 :root {
-  /* Primary - Deep Blue/Indigo */
-  --color-primary-50: 238 242 255;
-  --color-primary-100: 224 231 255;
-  --color-primary-200: 199 210 254;
-  --color-primary-300: 165 180 252;
-  --color-primary-400: 129 140 248;
-  --color-primary-500: 99 102 241;
-  --color-primary-600: 79 70 229;
-  --color-primary-700: 67 56 202;
-  --color-primary-800: 55 48 163;
-  --color-primary-900: 49 46 129;
+  /* Primary - Toko Mawa blue */
+  --color-primary-50: 239 246 255;
+  --color-primary-100: 219 234 254;
+  --color-primary-200: 191 219 254;
+  --color-primary-300: 147 197 253;
+  --color-primary-400: 96 165 250;
+  --color-primary-500: 40 117 230;
+  --color-primary-600: 23 92 211;
+  --color-primary-700: 25 75 169;
+  --color-primary-800: 27 64 137;
+  --color-primary-900: 28 56 110;
 
   /* Accent - Teal/Cyan */
   --color-accent-50: 236 254 255;

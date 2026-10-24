@@ -195,8 +195,8 @@
         "login": {
             "title": "Masuk",
             "subtitle": "Selamat Datang Kembali",
-            "description": "Masuk untuk mengakses dashboard Anda",
-            "appName": "Aplikasi Kasir",
+            "description": "Masuk untuk mulai bekerja di Toko Mawa.",
+            "appName": "Toko Mawa",
             "email": "Email",
             "emailPlaceholder": "nama@email.com",
             "password": "Password",
@@ -208,9 +208,9 @@
             "noAccount": "Belum punya akun?",
             "registerNow": "Daftar Sekarang",
             "registerLink": "Daftar Sekarang",
-            "heroTitle": "Kelola Bisnis Anda dengan Mudah",
-            "heroDescription": "Sistem Point of Sale modern yang membantu Anda mengelola transaksi, inventori, dan laporan keuangan dengan efisien.",
-            "features": ["Transaksi Cepat", "Laporan Real-time", "Multi User"]
+            "heroTitle": "Hari baru, semangat baru.",
+            "heroDescription": "Layani pelanggan, kelola persediaan, dan pantau penjualan Toko Mawa dalam satu ruang kerja.",
+            "features": ["Kasir toko", "Stok gudang", "Laporan penjualan"]
         },
         "register": {
             "title": "Daftar",

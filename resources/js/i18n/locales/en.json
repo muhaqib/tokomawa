@@ -195,8 +195,8 @@
         "login": {
             "title": "Sign In",
             "subtitle": "Welcome Back",
-            "description": "Sign in to access your dashboard",
-            "appName": "POS Application",
+            "description": "Sign in to your Toko Mawa workspace.",
+            "appName": "Toko Mawa",
             "email": "Email",
             "emailPlaceholder": "name@email.com",
             "password": "Password",
@@ -208,9 +208,9 @@
             "noAccount": "Don't have an account?",
             "registerNow": "Register Now",
             "registerLink": "Register Now",
-            "heroTitle": "Manage Your Business with Ease",
-            "heroDescription": "A modern Point of Sale system that helps you manage transactions, inventory, and financial reports efficiently.",
-            "features": ["Fast Transactions", "Real-time Reports", "Multi User"]
+            "heroTitle": "A fresh start for your store.",
+            "heroDescription": "Serve customers, manage stock, and track Toko Mawa sales in one workspace.",
+            "features": ["Checkout", "Inventory", "Sales reports"]
         },
         "register": {
             "title": "Register",

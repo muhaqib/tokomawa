@@ -8,7 +8,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ThemeSwitcherProvider } from './Context/ThemeSwitcherContext';
 import { OnlineStatusProvider } from './Context/OnlineStatusContext';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = 'Toko Mawa';
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -31,6 +31,6 @@ createInertiaApp({
         );
     },
     progress: {
-        color: '#4B5563',
+        color: '#175cd3',
     },
 });

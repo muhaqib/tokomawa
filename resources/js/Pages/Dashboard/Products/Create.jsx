@@ -18,10 +18,10 @@ import {
     IconRulerMeasure,
 } from "@tabler/icons-react";
 
-export default function Create({ categories, products, units = [] }) {
+export default function Create({ categories, products, units = [], warehouses = [] }) {
     const { errors } = usePage().props;
 
-    const { data, setData, post, processing } = useForm({
+    const { data, setData, post, processing, transform } = useForm({
         image: "",
         barcode: "",
         sku: "",
@@ -31,6 +31,7 @@ export default function Create({ categories, products, units = [] }) {
         buy_price: "",
         sell_price: "",
         stock: "",
+        warehouse_id: warehouses[0]?.id ?? "",
         min_stock: "",
         max_stock: "",
         tax_type: "exclusive",
@@ -145,13 +146,13 @@ export default function Create({ categories, products, units = [] }) {
         }
     };
 
-    // ponytail: zero-out stock/sell_price for composite; collapse if Inertia ever accepts pre-send transforms
+    // Transform the submitted values without waiting for a React state update.
     const submitCompositeAware = (e) => {
         e.preventDefault();
-        if (data.is_composite) {
-            setData("sell_price", 0);
-            setData("stock", 0);
-        }
+        transform((values) => ({
+            ...values,
+            ...(values.is_composite ? { sell_price: 0, stock: 0 } : {}),
+        }));
         post(route("products.store"), {
             onSuccess: () => toast.success("Produk berhasil ditambahkan"),
             onError: () => toast.error("Gagal menyimpan produk"),
@@ -345,6 +346,20 @@ export default function Create({ categories, products, units = [] }) {
                                     }
                                 />
                             </div>
+
+                            {!data.is_composite && (
+                                <div className="mt-4">
+                                    <InputSelect
+                                        label="Gudang Stok Awal"
+                                        data={warehouses}
+                                        selected={warehouses.find((warehouse) => warehouse.id === data.warehouse_id) ?? null}
+                                        setSelected={(warehouse) => setData("warehouse_id", warehouse?.id ?? "")}
+                                        placeholder="Pilih gudang"
+                                        errors={errors.warehouse_id}
+                                    />
+                                    <p className="mt-2 text-xs text-slate-500">Pilih gudang yang digunakan shift kasir agar produk tersedia di transaksi. Untuk gudang lain, gunakan transfer stok.</p>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <Input

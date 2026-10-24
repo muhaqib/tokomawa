@@ -1,3 +1,4 @@
+import StoreBrand from "@/Components/StoreBrand";
 import { useEffect } from "react";
 import { Head, Link, useForm } from "@inertiajs/react";
 import { useTranslation } from "react-i18next";
@@ -48,15 +49,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                 href="/"
                                 className="inline-flex items-center gap-3 mb-6"
                             >
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                                    <IconShoppingCart
-                                        size={24}
-                                        className="text-white"
-                                    />
-                                </div>
-                                <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {t("auth.login.appName")}
-                                </span>
+                                <StoreBrand />
                             </Link>
                             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
                                 {t("auth.login.subtitle")}
@@ -87,7 +80,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                             )}
                             {/* Email */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                     {t("auth.login.email")}
                                 </label>
                                 <div className="relative">
@@ -95,6 +88,9 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                         <IconMail size={20} />
                                     </div>
                                     <input
+                                        id="login-email"
+                                        autoComplete="username"
+                                        required
                                         type="email"
                                         name="email"
                                         value={data.email}
@@ -118,7 +114,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
 
                             {/* Password */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                     {t("auth.login.password")}
                                 </label>
                                 <div className="relative">
@@ -129,6 +125,9 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                         type={
                                             showPassword ? "text" : "password"
                                         }
+                                        id="login-password"
+                                        autoComplete="current-password"
+                                        required
                                         name="password"
                                         value={data.password}
                                         onChange={(e) =>
@@ -143,6 +142,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                     />
                                     <button
                                         type="button"
+                                        aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                                         onClick={() =>
                                             setShowPassword(!showPassword)
                                         }
@@ -227,7 +227,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                 </div>
 
                 {/* Right - Image/Decoration */}
-                <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary-500 to-primary-700 items-center justify-center p-12">
+                <div className="hidden lg:flex flex-1 bg-[#12377b] items-center justify-center p-12">
                     <div className="max-w-md text-center text-white">
                         <div className="w-24 h-24 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-8">
                             <IconShoppingCart size={48} />
