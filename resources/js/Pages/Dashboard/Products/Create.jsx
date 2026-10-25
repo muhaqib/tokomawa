@@ -22,6 +22,12 @@ export default function Create({ categories, products, units = [], warehouses = 
     const { errors } = usePage().props;
 
     const { data, setData, post, processing, transform } = useForm({
+        unit_name: "PCS",
+        conversion: 1,
+        department: "",
+        sub_category: "",
+        profit_percent: "",
+        rack: "",
         image: "",
         barcode: "",
         sku: "",
@@ -65,6 +71,7 @@ export default function Create({ categories, products, units = [], warehouses = 
                 unit_id: firstUnused.id,
                 is_base: data.units.length === 0,
                 conversion_factor: data.units.length === 0 ? 1 : "",
+                buy_price: "",
                 sell_price: "",
                 barcode: "",
             },
@@ -227,7 +234,7 @@ export default function Create({ categories, products, units = [], warehouses = 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
                                     <InputSelect
-                                        label="Kategori"
+                                        label="Kategori (opsional)"
                                         data={categories}
                                         selected={selectedCategory}
                                         setSelected={setSelectedCategoryHandler}
@@ -239,7 +246,7 @@ export default function Create({ categories, products, units = [], warehouses = 
                                 </div>
                                 <Input
                                     type="text"
-                                    label="Barcode"
+                                    label="Barcode (opsional, otomatis jika kosong)"
                                     value={data.barcode}
                                     onChange={(e) =>
                                         setData("barcode", e.target.value)
@@ -249,7 +256,7 @@ export default function Create({ categories, products, units = [], warehouses = 
                                 />
                                 <Input
                                     type="text"
-                                    label="SKU"
+                                    label="SKU (opsional, otomatis jika kosong)"
                                     value={data.sku}
                                     onChange={(e) => setData("sku", e.target.value)}
                                     errors={errors.sku}
@@ -265,9 +272,14 @@ export default function Create({ categories, products, units = [], warehouses = 
                                     errors={errors.title}
                                     placeholder="Masukkan nama produk"
                                 />
+                                {[['unit_name', 'Satuan', 'text'], ['conversion', 'Konversi', 'number'], ['department', 'Departemen', 'text'], ['sub_category', 'Sub Kategori', 'text'], ['profit_percent', 'Laba (%)', 'number'], ['rack', 'Rak', 'text']].map(([field, label, type]) => (
+                                    <Input key={field} type={type} step={type === 'number' ? 'any' : undefined}
+                                        label={label} value={data[field]} errors={errors[field]}
+                                        onChange={(e) => setData(field, e.target.value)} />
+                                ))}
                                 <div className="md:col-span-2">
                                     <Textarea
-                                        label="Deskripsi"
+                                        label="Deskripsi (opsional)"
                                         placeholder="Deskripsi produk (opsional)"
                                         errors={errors.description}
                                         onChange={(e) =>
@@ -307,6 +319,7 @@ export default function Create({ categories, products, units = [], warehouses = 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <Input
                                     type="number"
+                                    step="any"
                                     label="Harga Beli"
                                     value={data.buy_price}
                                     onChange={(e) =>
@@ -317,7 +330,8 @@ export default function Create({ categories, products, units = [], warehouses = 
                                 />
                                 <Input
                                     type="number"
-                                    label="Harga Jual"
+                                    step="any"
+                                    label="Harga Jual Retail"
                                     value={data.is_composite ? "" : data.sell_price}
                                     disabled={data.is_composite}
                                     onChange={(e) =>
@@ -332,7 +346,8 @@ export default function Create({ categories, products, units = [], warehouses = 
                                 />
                                 <Input
                                     type="number"
-                                    label="Stok"
+                                    step="any"
+                                    label="Stok (sesuai satuan; kosong = 0)"
                                     value={data.is_composite ? "" : data.stock}
                                     disabled={data.is_composite}
                                     onChange={(e) =>
@@ -364,7 +379,7 @@ export default function Create({ categories, products, units = [], warehouses = 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <Input
                                     type="number"
-                                    label="Stok Minimum"
+                                    label="Stok Minimum (opsional)"
                                     value={data.min_stock}
                                     onChange={(e) =>
                                         setData("min_stock", e.target.value)
@@ -374,7 +389,7 @@ export default function Create({ categories, products, units = [], warehouses = 
                                 />
                                 <Input
                                     type="number"
-                                    label="Stok Maksimum"
+                                    label="Stok Maksimum (opsional)"
                                     value={data.max_stock}
                                     onChange={(e) =>
                                         setData("max_stock", e.target.value)
@@ -575,9 +590,16 @@ export default function Create({ categories, products, units = [], warehouses = 
                                                 />
                                             </div>
                                             <div className="w-40">
+                                                <Input type="number" min="0" step="any" label="Harga beli satuan"
+                                                    value={row.buy_price ?? ""}
+                                                    onChange={(e) => updateUnitRow(index, "buy_price", e.target.value)}
+                                                    errors={errors[`units.${index}.buy_price`]} placeholder="Harga beli" />
+                                            </div>
+                                            <div className="w-40">
                                                 <Input
                                                     type="number"
                                                     min="0"
+                                                    step="any"
                                                     value={row.sell_price}
                                                     onChange={(e) =>
                                                         updateUnitRow(

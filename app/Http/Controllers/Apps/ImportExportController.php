@@ -9,8 +9,10 @@ use App\Http\Controllers\Controller;
 use App\Imports\CustomersImport;
 use App\Imports\ProductsImport;
 use App\Models\Outlet;
+use App\Models\Warehouse;
 use App\Services\OutletAccessService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
@@ -19,9 +21,9 @@ class ImportExportController extends Controller
 {
     public function __construct(private readonly OutletAccessService $outletAccessService) {}
 
-    public function exportProducts()
+    public function exportProducts(Request $request)
     {
-        return Excel::download(new ProductsExport, 'produk.xlsx');
+        return Excel::download(new ProductsExport($this->productWarehouse($request)->id), 'produk.xlsx');
     }
 
     public function exportCustomers()
@@ -45,7 +47,7 @@ class ImportExportController extends Controller
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'],
         ]);
 
-        $import = new ProductsImport;
+        $import = new ProductsImport($this->productWarehouse($request)->id, $request->user()->id);
         Excel::import($import, $request->file('file'));
 
         $successCount = $import->getRowCount();
@@ -65,10 +67,23 @@ class ImportExportController extends Controller
         return back()->with('success', 'Import customer selesai.');
     }
 
+    private function productWarehouse(Request $request): Warehouse
+    {
+        $request->validate(['warehouse_id' => 'nullable|integer|exists:warehouses,id']);
+        $warehouse = $this->outletAccessService->warehousesFor($request->user())
+            ->first(fn ($candidate) => (! $request->filled('warehouse_id') || $candidate->id === (int) $request->warehouse_id)
+                && $this->outletAccessService->canUseWarehouse($request->user(), $candidate));
+        if (! $warehouse) {
+            throw ValidationException::withMessages(['file' => 'Pilih gudang aktif yang dapat diakses untuk ekspor/impor.']);
+        }
+
+        return $warehouse;
+    }
+
     public function downloadTemplate(string $type)
     {
         $headings = match ($type) {
-            'products' => ['barcode', 'sku', 'nama', 'deskripsi', 'kategori', 'harga_beli', 'harga_jual', 'stok', 'min_stok', 'max_stok', 'tipe_pajak', 'tarif_pajak'],
+            'products' => (new ProductsExport)->headings(),
             'customers' => ['nama', 'telepon', 'alamat'],
             default => abort(404),
         };

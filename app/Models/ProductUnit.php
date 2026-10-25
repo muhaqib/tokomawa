@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\ProductPrice;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class ProductUnit extends Pivot
@@ -13,10 +14,11 @@ class ProductUnit extends Pivot
     protected function casts(): array
     {
         return [
+            'master_data' => 'array',
             'is_base' => 'boolean',
             'conversion_factor' => 'decimal:4',
-            'buy_price' => 'integer',
-            'sell_price' => 'integer',
+            'buy_price' => ProductPrice::class,
+            'sell_price' => ProductPrice::class,
         ];
     }
 }

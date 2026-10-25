@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\ProductPrice;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,8 +17,8 @@ class Product extends Model
         'category_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'buy_price' => 'integer',
-        'sell_price' => 'integer',
+        'buy_price' => ProductPrice::class,
+        'sell_price' => ProductPrice::class,
         'stock' => 'integer',
         'tax_rate' => 'decimal:2',
         'min_stock' => 'integer',
@@ -26,6 +27,13 @@ class Product extends Model
     ];
 
     protected $fillable = [
+        'master_key',
+        'unit_name',
+        'conversion',
+        'department',
+        'sub_category',
+        'profit_percent',
+        'rack',
         'image',
         'barcode',
         'sku',
@@ -58,7 +66,7 @@ class Product extends Model
     public function units(): BelongsToMany
     {
         return $this->belongsToMany(Unit::class, 'product_units')
-            ->withPivot(['is_base', 'conversion_factor', 'buy_price', 'sell_price', 'barcode', 'sku_suffix'])
+            ->withPivot(['is_base', 'conversion_factor', 'buy_price', 'sell_price', 'barcode', 'sku_suffix', 'master_data'])
             ->using(ProductUnit::class)
             ->withTimestamps();
     }

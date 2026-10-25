@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -82,22 +83,24 @@ class ProductController extends Controller
          */
         $request->validate([
             'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
-            'barcode' => 'required|unique:products,barcode',
-            'sku' => 'required|unique:products,sku',
+            'barcode' => 'nullable|string|max:255|unique:products,barcode',
+            'sku' => 'nullable|string|max:255|unique:products,sku',
             'title' => 'required',
             'description' => 'nullable|string',
-            'category_id' => 'required',
-            'buy_price' => 'required',
-            'sell_price' => 'required',
-            'stock' => 'required|integer|min:0',
+            'category_id' => 'nullable|exists:categories,id',
+            'buy_price' => 'required|numeric|min:0',
+            'sell_price' => 'required|numeric|min:0',
+            'stock' => 'nullable|numeric|min:0',
             'warehouse_id' => 'nullable|exists:warehouses,id',
             'min_stock' => 'nullable|integer|min:0',
             'max_stock' => 'nullable|integer|min:0',
             'tax_type' => 'nullable|in:exclusive,inclusive',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
+            ...$this->masterRules(),
             ...$this->compositeRules(),
             ...$this->unitRules(),
         ]);
+        $this->prepareMasterInput($request);
         $warehouse = null;
         if ($request->boolean('is_composite')) {
             $this->validateComponentProducts($request);
@@ -121,6 +124,7 @@ class ProductController extends Controller
             // create product
             $product = Product::create([
                 'image' => $image?->hashName(),
+                ...$request->only(array_keys($this->masterRules())),
                 'barcode' => $request->barcode,
                 'sku' => $request->sku,
                 'title' => $request->title,
@@ -140,6 +144,7 @@ class ProductController extends Controller
                 $this->syncComponents($product, $request->input('components'));
             } else {
                 $this->syncUnits($product, $request->input('units'));
+                $this->syncMasterUnit($product, $request);
 
                 // Keep global and warehouse stock in the same transaction.
                 if ($warehouse) {
@@ -203,20 +208,24 @@ class ProductController extends Controller
          * validate
          */
         $request->validate([
-            'barcode' => 'required|unique:products,barcode,'.$product->id,
-            'sku' => 'required|unique:products,sku,'.$product->id,
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
+            'barcode' => 'nullable|string|max:255|unique:products,barcode,'.$product->id,
+            'sku' => 'nullable|string|max:255|unique:products,sku,'.$product->id,
             'title' => 'required',
             'description' => 'nullable|string',
-            'category_id' => 'required',
-            'buy_price' => 'required',
-            'sell_price' => 'required',
+            'category_id' => 'nullable|exists:categories,id',
+            'buy_price' => 'required|numeric|min:0',
+            'sell_price' => 'required|numeric|min:0',
             'min_stock' => 'nullable|integer|min:0',
             'max_stock' => 'nullable|integer|min:0',
             'tax_type' => 'nullable|in:exclusive,inclusive',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
+            ...$this->masterRules(),
             ...$this->compositeRules(),
             ...$this->unitRules(),
         ]);
+
+        $this->prepareMasterInput($request, $product);
 
         if ($request->boolean('is_composite')) {
             $this->validateComponentProducts($request, $product);
@@ -230,7 +239,9 @@ class ProductController extends Controller
         if ($request->file('image')) {
 
             // remove old image
-            Storage::disk('local')->delete('public/products/'.basename($product->image));
+            if ($product->getRawOriginal('image')) {
+                Storage::disk('local')->delete('public/products/'.basename($product->getRawOriginal('image')));
+            }
 
             // upload new image
             $image = $request->file('image');
@@ -239,6 +250,7 @@ class ProductController extends Controller
             // update product with new image
             $product->update([
                 'image' => $image->hashName(),
+                ...$request->only(array_keys($this->masterRules())),
                 'barcode' => $request->barcode,
                 'sku' => $request->sku,
                 'title' => $request->title,
@@ -266,6 +278,7 @@ class ProductController extends Controller
 
         // update product without image
         $product->update([
+            ...$request->only(array_keys($this->masterRules())),
             'barcode' => $request->barcode,
             'sku' => $request->sku,
             'title' => $request->title,
@@ -305,7 +318,9 @@ class ProductController extends Controller
         $before = $this->productAuditPayload($product);
 
         // remove image
-        Storage::disk('local')->delete('public/products/'.basename($product->image));
+        if ($product->getRawOriginal('image')) {
+            Storage::disk('local')->delete('public/products/'.basename($product->getRawOriginal('image')));
+        }
 
         // delete
         $product->delete();
@@ -320,6 +335,82 @@ class ProductController extends Controller
 
         // redirect
         return back();
+    }
+
+    private function masterRules(): array
+    {
+        return [
+            'unit_name' => 'nullable|string|max:10',
+            'conversion' => 'nullable|numeric|gt:0',
+            'department' => 'nullable|string|max:255',
+            'sub_category' => 'nullable|string|max:255',
+            'profit_percent' => 'nullable|numeric',
+            'rack' => 'nullable|string|max:255',
+        ];
+    }
+
+    private function prepareMasterInput(Request $request, ?Product $product = null): void
+    {
+        if (! $product && ! $request->boolean('is_composite') && ! $request->input('units')) {
+            $factor = (float) ($request->input('conversion') ?: 1);
+            $stock = (float) $request->input('stock', 0) * $factor;
+            if (abs($stock - round($stock)) > 0.001) {
+                throw ValidationException::withMessages(['stock' => 'Stok × konversi harus menghasilkan satuan dasar bulat.']);
+            }
+            $request->attributes->set('master_row', [
+                'satuan' => $request->input('unit_name') ?: 'PCS',
+                'konversi' => $factor,
+                'harga_beli' => $request->buy_price,
+                'harga_jual' => $request->sell_price,
+            ]);
+            $request->merge([
+                'stock' => (int) round($stock),
+                'buy_price' => (float) $request->buy_price / $factor,
+                'sell_price' => (float) $request->sell_price / $factor,
+                'conversion' => 1,
+                'unit_name' => $factor === 1.0 ? ($request->input('unit_name') ?: 'PCS') : 'PCS',
+            ]);
+        }
+        if (! $product && ! $request->attributes->has('master_row')) {
+            $stock = (float) ($request->stock ?? 0);
+            if ($stock !== floor($stock)) {
+                throw ValidationException::withMessages(['stock' => 'Stok satuan dasar harus bulat.']);
+            }
+            $request->merge(['stock' => (int) $stock]);
+        }
+        $request->merge([
+            'barcode' => $request->input('barcode') ?: ($product?->barcode ?? 'AUTO-'.Str::uuid()),
+            'sku' => $request->input('sku') ?: ($product?->sku ?? 'SKU-'.Str::uuid()),
+            'category_id' => $request->input('category_id') ?: Category::firstOrCreate(
+                ['name' => 'Umum'], ['description' => '', 'image' => 'default.png']
+            )->id,
+            'unit_name' => $request->input('unit_name') ?: ($product?->unit_name ?? 'PCS'),
+            'conversion' => $request->input('conversion') ?: ($product?->conversion ?? 1),
+        ]);
+    }
+
+    private function syncMasterUnit(Product $product, Request $request): void
+    {
+        $row = $request->attributes->get('master_row');
+        if (! $row || $request->input('units')) {
+            return;
+        }
+        $unit = Unit::firstOrCreate(['code' => $row['satuan']], ['name' => $row['satuan'], 'symbol' => $row['satuan']]);
+        if ((float) $row['konversi'] === 1.0) {
+            $product->units()->updateExistingPivot($product->units()->pluck('units.id')->all(), ['is_base' => false]);
+        }
+        $product->units()->syncWithoutDetaching([$unit->id => [
+            'is_base' => (float) $row['konversi'] === 1.0,
+            'conversion_factor' => $row['konversi'],
+            'buy_price' => $row['harga_beli'],
+            'sell_price' => $row['harga_jual'],
+            'barcode' => $product->barcode,
+            'master_data' => $row,
+        ]]);
+        if ((float) $row['konversi'] !== 1.0 && ! $product->units()->wherePivot('is_base', true)->exists()) {
+            $pcs = Unit::firstOrCreate(['code' => 'PCS'], ['name' => 'Pieces', 'symbol' => 'pcs']);
+            $product->units()->syncWithoutDetaching([$pcs->id => ['is_base' => true, 'conversion_factor' => 1, 'buy_price' => $product->buy_price, 'sell_price' => $product->sell_price]]);
+        }
     }
 
     private function compositeRules(): array
@@ -365,8 +456,8 @@ class ProductController extends Controller
             'units.*.unit_id' => 'required|integer|distinct|exists:units,id',
             'units.*.is_base' => 'required|boolean',
             'units.*.conversion_factor' => 'required|numeric|min:0.0001',
-            'units.*.buy_price' => 'nullable|integer|min:0',
-            'units.*.sell_price' => 'nullable|integer|min:0',
+            'units.*.buy_price' => 'nullable|numeric|min:0',
+            'units.*.sell_price' => 'nullable|numeric|min:0',
             'units.*.barcode' => 'nullable|string|max:255',
         ];
     }

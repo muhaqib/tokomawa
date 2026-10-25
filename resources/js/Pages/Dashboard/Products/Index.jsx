@@ -24,6 +24,7 @@ import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodePrintModal from "@/Components/Barcode/BarcodePrintModal";
 import { useAuthorization } from "@/Utils/authorization";
 import { router } from "@inertiajs/react";
+import toast from "react-hot-toast";
 
 const formatCurrency = (value = 0) =>
     new Intl.NumberFormat("id-ID", {
@@ -183,13 +184,16 @@ function ProductCard({
     );
 }
 
-export default function Index({ products }) {
+export default function Index({ products, warehouses = [] }) {
     const { can } = useAuthorization();
+    const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
     const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
     const [showBarcodeModal, setShowBarcodeModal] = useState(false);
     const [singleProductBarcode, setSingleProductBarcode] = useState(null);
     const [selectedProducts, setSelectedProducts] = useState([]);
     const canCreateProducts = can("products-create");
+    const canImportProducts = can("products-import");
+    const canExportProducts = can("products-export");
     const canEditProducts = can("products-edit");
     const canDeleteProducts = can("products-delete");
 
@@ -259,22 +263,27 @@ export default function Index({ products }) {
                             <IconBarcode size={18} />
                             Cetak All Barcode
                         </button>
-                        {canCreateProducts && (
+                        {(canImportProducts || canExportProducts) && (
                             <>
-                                <a
-                                    href={route("export.products")}
+                                <select aria-label="Gudang ekspor dan impor" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} className="rounded-xl border-slate-200 text-sm dark:bg-slate-900 dark:text-white">
+                                    {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
+                                </select>
+                                {canExportProducts && <a
+                                    href={route("export.products", { warehouse_id: warehouseId })}
                                     className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto"
                                 >
                                     <IconDownload size={18} />
                                     Export
-                                </a>
+                                </a>}
+                                {canImportProducts && <>
+                                <a href={route("import.template", { type: "products" })} className="text-sm text-primary-600 underline">Template Excel</a>
                                 <button
                                     type="button"
                                     onClick={() => document.getElementById("import-products-input")?.click()}
                                     className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto"
                                 >
                                     <IconUpload size={18} />
-                                    Import
+                                    Import Excel
                                 </button>
                                 <input
                                     id="import-products-input"
@@ -283,9 +292,14 @@ export default function Index({ products }) {
                                     className="hidden"
                                     onChange={function(e) {
                                         const file = e.target.files && e.target.files[0];
-                                        if (file) router.post(route("import.products"), { file });
+                                        if (file) router.post(route("import.products"), { file, warehouse_id: warehouseId }, {
+                                            onSuccess: (page) => toast.success(page.props.flash?.success ?? "Import selesai"),
+                                            onError: (errors) => toast.error(String(Object.values(errors)[0] ?? "Gagal mengimpor Excel")),
+                                            onFinish: () => { e.target.value = ""; },
+                                        });
                                     }}
                                 />
+                                </>}
                             </>
                         )}
                         {canCreateProducts && (
