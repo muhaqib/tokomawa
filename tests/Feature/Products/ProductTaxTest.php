@@ -5,6 +5,7 @@ namespace Tests\Feature\Products;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\UserSeeder;
@@ -24,6 +25,14 @@ class ProductTaxTest extends TestCase
             PermissionSeeder::class,
             RoleSeeder::class,
             UserSeeder::class,
+        ]);
+
+        Warehouse::create([
+            'code' => 'PUSAT',
+            'name' => 'Gudang Pusat',
+            'type' => 'main',
+            'is_active' => true,
+            'sort_order' => 0,
         ]);
 
         $this->admin = User::where('email', 'arya@gmail.com')->first();
@@ -56,9 +65,9 @@ class ProductTaxTest extends TestCase
     {
         $response = $this->post(route('products.store'), $this->validPayload());
 
-        $response->assertRedirect(route('products.index'));
+        $response->assertSessionHasNoErrors()->assertRedirect(route('products.index'));
 
-        $product = Product::latest('id')->first();
+        $product = Product::latest('id')->firstOrFail();
         $this->assertEquals('inclusive', $product->tax_type);
         $this->assertEquals(5.5, $product->tax_rate);
     }
@@ -68,9 +77,11 @@ class ProductTaxTest extends TestCase
         $payload = $this->validPayload();
         unset($payload['tax_type'], $payload['tax_rate']);
 
-        $this->post(route('products.store'), $payload);
+        $this->post(route('products.store'), $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('products.index'));
 
-        $product = Product::latest('id')->first();
+        $product = Product::latest('id')->firstOrFail();
         $this->assertEquals('exclusive', $product->tax_type);
         $this->assertEquals(11.00, $product->tax_rate);
     }
@@ -100,7 +111,9 @@ class ProductTaxTest extends TestCase
             '_method' => 'PUT',
         ]);
 
-        $this->post(route('products.update', $product->id), $payload);
+        $this->post(route('products.update', $product->id), $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('products.index'));
 
         $product->refresh();
         $this->assertEquals('exclusive', $product->tax_type);

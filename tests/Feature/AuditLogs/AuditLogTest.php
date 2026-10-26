@@ -14,6 +14,7 @@ use App\Models\StockOpname;
 use App\Models\StockOpnameItem;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -91,6 +92,14 @@ class AuditLogTest extends TestCase
     {
         Storage::fake('local');
 
+        Warehouse::create([
+            'code' => 'PUSAT',
+            'name' => 'Gudang Pusat',
+            'type' => 'main',
+            'is_active' => true,
+            'sort_order' => 0,
+        ]);
+
         $user = $this->createUserWithPermissions([
             'products-create',
             'products-edit',
@@ -113,7 +122,7 @@ class AuditLogTest extends TestCase
             'buy_price' => 10000,
             'sell_price' => 15000,
             'stock' => 7,
-        ])->assertRedirect(route('products.index'));
+        ])->assertSessionHasNoErrors()->assertRedirect(route('products.index'));
 
         $product = Product::firstOrFail();
 

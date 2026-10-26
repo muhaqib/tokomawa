@@ -274,6 +274,14 @@ class StockOpnameTest extends TestCase
     {
         Storage::fake('local');
 
+        $warehouse = Warehouse::create([
+            'code' => 'PUSAT',
+            'name' => 'Gudang Pusat',
+            'type' => 'main',
+            'is_active' => true,
+            'sort_order' => 0,
+        ]);
+
         $user = $this->createUserWithPermissions(['products-create']);
         $category = Category::create([
             'name' => 'Minuman',
@@ -297,7 +305,7 @@ class StockOpnameTest extends TestCase
 
         $product = Product::latest('id')->first();
 
-        $response->assertRedirect(route('products.index'));
+        $response->assertSessionHasNoErrors()->assertRedirect(route('products.index'));
         $this->assertNotNull($product);
         $this->assertDatabaseHas('stock_mutations', [
             'product_id' => $product->id,
@@ -308,6 +316,12 @@ class StockOpnameTest extends TestCase
             'stock_before' => 0,
             'stock_after' => 15,
             'created_by' => $user->id,
+            'warehouse_id' => $warehouse->id,
+        ]);
+        $this->assertDatabaseHas('product_warehouse', [
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'stock' => 15,
         ]);
     }
 
