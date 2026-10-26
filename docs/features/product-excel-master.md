@@ -1,5 +1,21 @@
 # Master produk Excel
 
+## Impor melalui terminal VPS
+
+Upload `master_toko_coba.xlsx` ke `storage/app/imports/` dalam direktori aplikasi (buat direktori dengan `mkdir -p storage/app/imports`). Setelah kode terbaru tersedia di VPS, jalankan dari direktori aplikasi:
+
+```bash
+php8.4 artisan migrate --force
+php8.4 artisan products:import storage/app/imports/master_toko_coba.xlsx --warehouse=PUSAT --dry-run
+php8.4 artisan products:import storage/app/imports/master_toko_coba.xlsx --warehouse=PUSAT --force
+```
+
+Ganti `PUSAT` dengan kode gudang aktif tujuan. Path absolut juga diterima. File `.xlsx` di root aplikasi dapat langsung digunakan sebagai `master_toko_coba.xlsx`.
+
+`--dry-run` menjalankan importer dan membatalkan seluruh perubahan, termasuk kategori, satuan, dan mutasi stok. Jalankan simulasi sebelum impor sesungguhnya. Tanpa `--force`, perintah meminta konfirmasi. Cadangkan database sebelum impor produksi karena harga dan master produk yang cocok akan diperbarui, dan STOK terisi mengganti saldo gudang tujuan. Jumlah yang ditampilkan adalah jumlah baris produk/satuan, bukan jumlah produk unik. Kegagalan impor membatalkan seluruh perubahan dalam file dan menghasilkan exit code nonzero. Impor ulang menggunakan identitas produk yang sama; saldo stok tidak ditambahkan berulang kali. Perintah ini tidak menjalankan demo seeder.
+
+## Format dan perilaku impor
+
 Form produk, template, ekspor, dan impor mendukung kolom `SKU`, `BARCODE`, `NAMA`, `SATUAN`, `KONVERSI`, `DEPARTEMEN`, `KATEGORI`, `SUB KATEGORI`, `HARGA BELI`, `HARGA JUAL RETAIL`, `LABA(%)`, `RAK`, dan `STOK` seperti `master_toko_coba.xlsx`.
 
 Jalankan `php artisan migrate` setelah memperbarui aplikasi. Migrasi menambahkan metadata master dan mengubah harga produk/satuan menjadi desimal agar harga beli Excel tidak terpotong. Modul transaksi tetap mengikuti aturan pembulatan nominal yang sudah ada.
